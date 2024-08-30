@@ -13,10 +13,12 @@ end
 OmniAuth.config.path_prefix = nil
 
 OmniAuth.config.on_failure = Proc.new do |env|
-  env['devise.mapping'] = Devise::Mapping.find_by_path!(env['PATH_INFO'], :path)
-  controller_name  = ActiveSupport::Inflector.camelize(env['devise.mapping'].controllers[:omniauth_callbacks])
-  controller_klass = ActiveSupport::Inflector.constantize("#{controller_name}Controller")
-  controller_klass.action(:failure).call(env)
+  message_key = env['omniauth.error.type']
+  origin_query_param = env['omniauth.origin'] ? "&origin=#{CGI.escape(env['omniauth.origin'])}" : ''
+  strategy_name_query_param = env['omniauth.error.strategy'] ? "&strategy=#{env['omniauth.error.strategy'].name}" : ''
+  extra_params = env['omniauth.params'] ? "&#{env['omniauth.params'].to_query}" : ''
+  new_path = "#{env['SCRIPT_NAME']}#{OmniAuth.config.path_prefix}/failure?message=#{message_key}#{origin_query_param}#{strategy_name_query_param}#{extra_params}"
+  Rack::Response.new(['302 Moved'], 302, 'Location' => new_path).finish
 end
 
 module Devise
